@@ -32,6 +32,7 @@
             messageTextBox = new TextBox();
             sendButton = new Button();
             panel1 = new Panel();
+            byteCounter = new Label();
             panel1.SuspendLayout();
             SuspendLayout();
             // 
@@ -51,6 +52,8 @@
             messageTextBox.Name = "messageTextBox";
             messageTextBox.Size = new Size(287, 84);
             messageTextBox.TabIndex = 1;
+            messageTextBox.TextChanged += messageTextBox_TextChanged;
+            messageTextBox.KeyPress += messageTextBox_KeyPress;
             // 
             // sendButton
             // 
@@ -65,12 +68,22 @@
             // panel1
             // 
             panel1.BackColor = SystemColors.ButtonFace;
+            panel1.Controls.Add(byteCounter);
             panel1.Controls.Add(messageTextBox);
             panel1.Controls.Add(sendButton);
             panel1.Location = new Point(0, 295);
             panel1.Name = "panel1";
             panel1.Size = new Size(317, 131);
             panel1.TabIndex = 3;
+            // 
+            // byteCounter
+            // 
+            byteCounter.AutoSize = true;
+            byteCounter.Location = new Point(15, 96);
+            byteCounter.Name = "byteCounter";
+            byteCounter.Size = new Size(42, 15);
+            byteCounter.TabIndex = 3;
+            byteCounter.Text = "0/1019";
             // 
             // Form1
             // 
@@ -82,6 +95,7 @@
             Controls.Add(chatContainer);
             Name = "Form1";
             Text = "Form1";
+            Load += Form1_Load;
             panel1.ResumeLayout(false);
             panel1.PerformLayout();
             ResumeLayout(false);
@@ -93,5 +107,6 @@
         private TextBox messageTextBox;
         private Button sendButton;
         private Panel panel1;
+        private Label byteCounter;
     }
 }

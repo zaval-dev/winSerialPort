@@ -12,7 +12,7 @@ namespace ChatApp
     {
         public delegate void HandlerTxRx(Object o, string mensajeRecibido);
         public event HandlerTxRx LlegoMensaje;
-        
+
         private FileSent archivoEnviar;
         private FileStream FlujoArchivoEnviar;
         private BinaryReader LectorArchivo;
@@ -93,6 +93,28 @@ namespace ChatApp
             }
         }
 
+        public void inicializaEnvio(string mensaje)
+        {
+            if(mensaje.Length > 1019)
+            {
+                MessageBox.Show("El mensaje es demasiado largo. \nEl máximo permitido: 1019 caracteres.");
+                return;
+            }
+
+            mensajeEnviar = mensaje;
+            
+            byte[] bytesMensaje = Encoding.UTF8.GetBytes(mensajeEnviar);
+
+            string longitudMensaje = "M" + bytesMensaje.Length.ToString("D4");
+            //MessageBox.Show("longitud:" + longitudMensaje);
+
+            //TramaEnvio = Encoding.UTF8.GetBytes(mensajeEnviar);
+            TramaEnvio = bytesMensaje;
+            TramaCabeceraEnvio = Encoding.UTF8.GetBytes(longitudMensaje);
+            procesoEnvio = new Thread(enviandoMensaje);
+            procesoEnvio.Start();
+        }
+
         private void DataReceivedEvent(object o, SerialDataReceivedEventArgs sd)
         {
             if(puerto.BytesToRead >= 1024)
@@ -113,7 +135,7 @@ namespace ChatApp
                 {
                     case "M":
                         Array.Copy(TramaRecibida, BufferMensajes, TramaRecibida.Length);
-                        procesoRecibirMensaje = new Thread(RecibiendoMensaje);
+                        procesoRecibirMensaje = new Thread(recibiendoMensaje);
                         procesoRecibirMensaje.Start();
                         break;
                     case "A":
@@ -136,19 +158,31 @@ namespace ChatApp
             }
         }
 
-        private void RecibiendoMensaje()
+        /**
+         * Lógica de envío y recepción de mensajes
+         * **/
+        private void enviandoMensaje()
+        {
+            puerto.Write(TramaCabeceraEnvio, 0, 5);
+            puerto.Write(TramaEnvio, 0, TramaEnvio.Length);
+            puerto.Write(tramaRelleno, 0, 1019 - TramaEnvio.Length);
+        }
+        private void recibiendoMensaje()
         {
             //Capturamos la longitud del mensaje EJ: "M0015", pero están almacenados en byte por lo que tenemos que convertir
-            string CabeceraRecibida = ASCIIEncoding.UTF8.GetString(BufferMensajes, 1, 4);
+            string CabeceraRecibida = Encoding.UTF8.GetString(BufferMensajes, 1, 4);
             //Una vez capturada la longitud la pasamos a entero
             int LongitudMensajeRecibido = Convert.ToInt16(CabeceraRecibida);
 
             //Decodificamos el mensaje(En bytes) y lo convertimos a string
-            mensajeRecibido = ASCIIEncoding.UTF8.GetString(TramaRecibida, 5, LongitudMensajeRecibido);
+            mensajeRecibido = Encoding.UTF8.GetString(TramaRecibida, 5, LongitudMensajeRecibido);
 
             OnLlegoMensaje(); //Disparamos el evento de llegada de mensaje
         }
 
+        /**
+         * Bucle infinito que verifica el buffer
+         * **/
         public void verificaBufferSalida()
         {
             while (true)
