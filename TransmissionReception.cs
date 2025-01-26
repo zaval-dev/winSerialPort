@@ -94,12 +94,13 @@ namespace ChatApp
 
                 if(trama != null)
                 {
+                    //MessageBox.Show("AQUÍ");
                     puerto.Write(trama, 0, trama.Length);
                     if(trama.Length < 1024)
                     {
                         puerto.Write(tramaRelleno, 0, 1024 - trama.Length);
                     }
-                    Console.WriteLine($"Trama enviada: {trama.Length} bytes netos.");
+                    //MessageBox.Show($"Trama enviada: {trama.Length-5} bytes netos.");
                 }
                 else
                 {
@@ -156,7 +157,7 @@ namespace ChatApp
             {
                 colaMensajes.Enqueue(tramaMensaje);
             }
-            Console.WriteLine("Mensaje añadido a la cola de mensajes.");
+            //MessageBox.Show("Mensaje añadido a la cola de mensajes.");
         }
 
         private void DataReceivedEvent(object o, SerialDataReceivedEventArgs sd)
