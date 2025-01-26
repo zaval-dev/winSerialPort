@@ -33,6 +33,7 @@
             sendButton = new Button();
             panel1 = new Panel();
             byteCounter = new Label();
+            fileButton = new Button();
             panel1.SuspendLayout();
             SuspendLayout();
             // 
@@ -68,6 +69,7 @@
             // panel1
             // 
             panel1.BackColor = SystemColors.ButtonFace;
+            panel1.Controls.Add(fileButton);
             panel1.Controls.Add(byteCounter);
             panel1.Controls.Add(messageTextBox);
             panel1.Controls.Add(sendButton);
@@ -84,6 +86,16 @@
             byteCounter.Size = new Size(42, 15);
             byteCounter.TabIndex = 3;
             byteCounter.Text = "0/1019";
+            // 
+            // fileButton
+            // 
+            fileButton.Location = new Point(144, 98);
+            fileButton.Name = "fileButton";
+            fileButton.Size = new Size(75, 23);
+            fileButton.TabIndex = 4;
+            fileButton.Text = "Adjuntar";
+            fileButton.UseVisualStyleBackColor = true;
+            fileButton.Click += fileButton_Click;
             // 
             // Form1
             // 
@@ -108,5 +120,6 @@
         private Button sendButton;
         private Panel panel1;
         private Label byteCounter;
+        private Button fileButton;
     }
 }
