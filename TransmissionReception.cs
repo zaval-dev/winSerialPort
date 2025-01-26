@@ -25,8 +25,13 @@ namespace ChatApp
         Thread procesoVerificaSalida;
         Thread procesoRecibirMensaje;
 
-        Thread procesoEnvioArchivo;
-        Thread procesoConstruyeArchivo;
+        /**
+         * Declaraciones para implementar cola de mensajes
+         * **/
+        private readonly Queue<byte[]> colaMensajes = new Queue<byte[]>();
+        private readonly object lockCola = new object();
+        private Thread hiloEnvio;
+        private bool hiloActivo = true;
 
         private SerialPort puerto;
         private string mensajeEnviar;
@@ -63,6 +68,43 @@ namespace ChatApp
             for(int i = 0; i <= 1023; i++)
             {
                 tramaRelleno[i] = 64;
+            }
+            IniciarHiloEnvio();
+        }
+
+        public void IniciarHiloEnvio()
+        {
+            hiloEnvio = new Thread(ProcesarColaEnvios);
+            hiloEnvio.Start();
+        }
+
+        private void ProcesarColaEnvios()
+        {
+            while (hiloActivo)
+            {
+                byte[] trama = null;
+
+                lock (lockCola)
+                {
+                    if(colaMensajes.Count > 0)
+                    {
+                        trama = colaMensajes.Dequeue();
+                    }
+                }
+
+                if(trama != null)
+                {
+                    puerto.Write(trama, 0, trama.Length);
+                    if(trama.Length < 1024)
+                    {
+                        puerto.Write(tramaRelleno, 0, 1024 - trama.Length);
+                    }
+                    Console.WriteLine($"Trama enviada: {trama.Length} bytes netos.");
+                }
+                else
+                {
+                    Thread.Sleep(10);
+                }
             }
         }
 
@@ -104,15 +146,17 @@ namespace ChatApp
             mensajeEnviar = mensaje;
             
             byte[] bytesMensaje = Encoding.UTF8.GetBytes(mensajeEnviar);
-
             string longitudMensaje = "M" + bytesMensaje.Length.ToString("D4");
-            //MessageBox.Show("longitud:" + longitudMensaje);
-
-            //TramaEnvio = Encoding.UTF8.GetBytes(mensajeEnviar);
+            
             TramaEnvio = bytesMensaje;
             TramaCabeceraEnvio = Encoding.UTF8.GetBytes(longitudMensaje);
-            procesoEnvio = new Thread(enviandoMensaje);
-            procesoEnvio.Start();
+            byte[] tramaMensaje = TramaCabeceraEnvio.Concat(TramaEnvio).ToArray();
+
+            lock (lockCola)
+            {
+                colaMensajes.Enqueue(tramaMensaje);
+            }
+            Console.WriteLine("Mensaje añadido a la cola de mensajes.");
         }
 
         private void DataReceivedEvent(object o, SerialDataReceivedEventArgs sd)
