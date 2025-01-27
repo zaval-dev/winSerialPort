@@ -8,7 +8,7 @@ namespace ChatApp
         delegate void mostrarOtroProceso(string mensaje);
         mostrarOtroProceso delegadoMostrar;
 
-        public string portName = "COM1";
+        public string portName = "COM2";
 
         public Form1()
         {
@@ -51,7 +51,7 @@ namespace ChatApp
         private void Form1_Load(object sender, EventArgs e)
         {
             controlTxRx = new TransmissionReception();
-            controlTxRx.Inicialize(portName);
+            controlTxRx.Inicializa(portName);
             controlTxRx.LlegoMensaje += new TransmissionReception.HandlerTxRx(controlTxRx_LlegoMensaje);
             delegadoMostrar = new mostrarOtroProceso(mostrarMensaje);
         }
@@ -66,7 +66,7 @@ namespace ChatApp
             }
             if (!string.IsNullOrWhiteSpace(messageTextBox.Text))
             {
-                controlTxRx.inicializaEnvio(messageTextBox.Text);
+                controlTxRx.Enviar(messageTextBox.Text);
 
                 Label messageLabel = new Label
                 {

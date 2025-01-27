@@ -8,18 +8,20 @@ using System.Threading.Tasks;
 
 namespace ChatApp
 {
-    internal class TransmissionReception
+    class TransmissionReception
     {
-        public delegate void HandlerTxRx(Object o, string mensajeRecibido);
+        public delegate void HandlerTxRx(object oo, string mensRec);
         public event HandlerTxRx LlegoMensaje;
 
-        private FileSent archivoEnviar;
+        private FileSent arhivoEnviar;
         private FileStream FlujoArchivoEnviar;
-        private BinaryReader LectorArchivo;
+        private BinaryReader LeyendoArchivo;
 
-        private FileSent archivoRecibir;
+
+        private FileSent arhivoRecibir;
         private FileStream FlujoArchivoRecibir;
-        private BinaryWriter EscritorArchivo;
+        private BinaryWriter EscribiendoArchivo;
+
 
         Thread procesoEnvio;
         Thread procesoVerificaSalida;
@@ -28,109 +30,82 @@ namespace ChatApp
         Thread procesoEnvioArchivo;
         Thread procesoConstruyeArchivo;
 
+
+
         private SerialPort puerto;
         private string mensajeEnviar;
-        private string mensajeRecibido;
+        private string mensRecibido;
+
         private string rutaDescarga = "E:\\PRUEBA\\1\\";
 
         private Boolean BufferSalidaVacio;
-        
-        private byte[] TramaEnvio;
-        private byte[] TramaCabeceraEnvio;
-        private byte[] tramaRelleno;
 
-        private byte[] TramaRecibida;
+        byte[] TramaEnvio;
+        byte[] TramCabaceraEnvio;
+        byte[] tramaRelleno;
 
-        /**
-         * Constructor
-         * **/
+        byte[] TramaRecibida;
+
         public TransmissionReception()
         {
             TramaEnvio = new byte[1024];
-            TramaCabeceraEnvio = new byte[5];
+            TramCabaceraEnvio = new byte[5];
             tramaRelleno = new byte[1024];
 
             TramaRecibida = new byte[1024];
 
-            for(int i = 0; i <= 1023; i++)
-            {
-                tramaRelleno[i] = 64;
-            }
+            for (int i = 0; i <= 1023; i++)
+            { tramaRelleno[i] = 64; }
+
         }
+
+        public string getRutaDescarga()
+        {
+            return rutaDescarga;
+        }
+
         public void modificarRutaDescarga(string nuevaRuta)
         {
             rutaDescarga = nuevaRuta;
         }
 
-        public void Inicialize(string portName)
+        public void Inicializa(string NombrePuerto)
         {
-            try
-            {
-                puerto = new SerialPort(portName, 57600, Parity.Even, 8, StopBits.Two);
-                /**
-                 * Se requiere de 1024 bits disponibles para disparar el evento DataReceived
-                 * **/
-                puerto.ReceivedBytesThreshold = 1024;
-                puerto.DataReceived += new SerialDataReceivedEventHandler(DataReceivedEvent);
-                puerto.Open();
+            puerto = new SerialPort(NombrePuerto, 57600, Parity.Even, 8, StopBits.Two);
+            puerto.ReceivedBytesThreshold = 1024;
+            puerto.DataReceived += new SerialDataReceivedEventHandler(puerto_DataReceived);
+            puerto.Open();
 
-                BufferSalidaVacio = true;
-                procesoVerificaSalida = new Thread(verificaBufferSalida);
-                procesoVerificaSalida.Start();
+            BufferSalidaVacio = true;
+            procesoVerificaSalida = new Thread(VerificandoSalida);
+            procesoVerificaSalida.Start();
 
-                archivoEnviar = new FileSent();
-                archivoRecibir = new FileSent();
+            arhivoEnviar = new FileSent();
+            arhivoRecibir = new FileSent();
 
-                MessageBox.Show("Puerto: " + puerto.PortName + " abierto correctamente.");
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Error al intentar abrir el puerto." + "\n" + e.Message);
-            }
+            MessageBox.Show("apertura del puerto" + puerto.PortName);
+
+
+
         }
 
-        public void inicializaEnvio(string mensaje, string tipo = "M")
+        private void puerto_DataReceived(object o, SerialDataReceivedEventArgs sd)
         {
-            if(mensaje.Length > 1019)
+            //MessageBox.Show("se disparo el evento de recepcion");
+            // mensRecibido = puerto.ReadExisting();
+            if (puerto.BytesToRead >= 1024)
             {
-                MessageBox.Show("El mensaje es demasiado largo. \nEl máximo permitido: 1019 caracteres.");
-                return;
-            }
-
-            mensajeEnviar = mensaje;
-            
-            byte[] bytesMensaje = Encoding.UTF8.GetBytes(mensajeEnviar);
-
-            string longitudMensaje = tipo + bytesMensaje.Length.ToString("D4");
-
-            TramaEnvio = bytesMensaje;
-            TramaCabeceraEnvio = Encoding.UTF8.GetBytes(longitudMensaje);
-            procesoEnvio = new Thread(enviandoMensaje);
-            procesoEnvio.Start();
-        }
-
-        private void DataReceivedEvent(object o, SerialDataReceivedEventArgs sd)
-        {
-            if(puerto.BytesToRead >= 1024)
-            {
-                /**
-                 * Se almacena todo el buffer de entrada del puerto 
-                 * y se almacena en TramaRecibida
-                 * **/
                 puerto.Read(TramaRecibida, 0, 1024);
 
-                /**
-                 * Capturamos el primer digito de la cabecera
-                 * Determinamos si es un archivo(A) o mensaje(M)
-                 * **/
                 string TAREA = ASCIIEncoding.UTF8.GetString(TramaRecibida, 0, 1);
 
-                switch(TAREA)
+                switch (TAREA)
                 {
                     case "M":
-                        procesoRecibirMensaje = new Thread(recibiendoMensaje);
+                        procesoRecibirMensaje = new Thread(RecibiendoMensaje);
                         procesoRecibirMensaje.Start();
                         break;
+
                     /* caso "AC" = "F" 
                      * instanciar los flujo y binary de escritura = inicioConstruirArchivo
                      * */
@@ -145,59 +120,100 @@ namespace ChatApp
                         //.Start();
                         ConstruirArchivo();
                         break;
+                    case "I":
+                        break;
                     default:
                         MessageBox.Show("trama no reconocida");
                         break;
+
+
                 }
+                //  string CabRec = ASCIIEncoding.UTF8.GetString(TramaRecibida, 0, 5);
+                //   int LongMensRec = Convert.ToInt16(CabRec);
+
+                //  mensRecibido = ASCIIEncoding.UTF8.GetString(TramaRecibida, 5, LongMensRec);
+
+                //  OnLlegoMensaje();
             }
+            // MessageBox.Show(mensRecibido);
+        }
+
+        private void RecibiendoMensaje()
+        {
+            string CabRec = ASCIIEncoding.UTF8.GetString(TramaRecibida, 1, 4);
+            int LongMensRec = Convert.ToInt16(CabRec);
+
+            mensRecibido = ASCIIEncoding.UTF8.GetString(TramaRecibida, 5, LongMensRec);
+
+            OnLlegoMensaje();
+
         }
 
         protected virtual void OnLlegoMensaje()
         {
-            if(LlegoMensaje != null)
-            {
-                LlegoMensaje(this, mensajeRecibido);
-            }
+            if (LlegoMensaje != null)
+                LlegoMensaje(this, mensRecibido);
         }
 
-        /**
-         * Lógica de envío y recepción de mensajes
-         * **/
-        private void enviandoMensaje()
+
+        public void Enviar(string mensaje, string tipo = "M")
         {
-            puerto.Write(TramaCabeceraEnvio, 0, 5);
+            if (mensaje.Length > 1019)
+            {
+                MessageBox.Show("El mensaje es demasiado largo. \nEl máximo permitido: 1019 caracteres.");
+                return;
+            }
+
+            mensajeEnviar = mensaje;
+            byte[] bytesMensaje = Encoding.UTF8.GetBytes(mensajeEnviar);
+
+            string longitudMensaje = tipo + bytesMensaje.Length.ToString("D4");
+
+            TramaEnvio = bytesMensaje;
+            TramCabaceraEnvio = ASCIIEncoding.UTF8.GetBytes(longitudMensaje);
+            procesoEnvio = new Thread(Enviando);
+            procesoEnvio.Start();
+
+
+        }
+
+        private void Enviando()
+        {
+            //  puerto.Write(mensajeEnviar);
+            puerto.Write(TramCabaceraEnvio, 0, 5);
             puerto.Write(TramaEnvio, 0, TramaEnvio.Length);
             puerto.Write(tramaRelleno, 0, 1019 - TramaEnvio.Length);
+
+            // MessageBox.Show("mensaje terminado de enviar");
         }
-        private void recibiendoMensaje()
+
+        public void Recibir()
         {
-            //Capturamos la longitud del mensaje EJ: "M0015", pero están almacenados en byte por lo que tenemos que convertir
-            string CabeceraRecibida = Encoding.UTF8.GetString(TramaRecibida, 1, 4);
-            //Una vez capturada la longitud la pasamos a entero
-            int LongitudMensajeRecibido = Convert.ToInt16(CabeceraRecibida);
-            //Decodificamos el mensaje(En bytes) y lo convertimos a string
-            mensajeRecibido = Encoding.UTF8.GetString(TramaRecibida, 5, LongitudMensajeRecibido);
-
-            OnLlegoMensaje(); //Disparamos el evento de llegada de mensaje
+            mensRecibido = puerto.ReadExisting();
+            MessageBox.Show(mensRecibido);
         }
 
-        /**
-         * Bucle infinito que verifica el buffer
-         * **/
-        public void verificaBufferSalida()
+        private void VerificandoSalida()
         {
             while (true)
             {
                 if (puerto.BytesToWrite > 0)
-                {
                     BufferSalidaVacio = false;
-                }
                 else
-                {
                     BufferSalidaVacio = true;
-                }
             }
+
         }
+
+        public int BytesPorSALIR()
+        {
+            int cantBytes = 0;
+            if (BufferSalidaVacio == false)
+                cantBytes = puerto.BytesToWrite;
+            return cantBytes;
+        }
+
+
 
         public void IniciaEnvioArchivo(string nombre)
         {
@@ -205,19 +221,19 @@ namespace ChatApp
             // leerlo en stream
             // iniciar una hebra de envio
             FlujoArchivoEnviar = new FileStream(nombre, FileMode.Open, FileAccess.Read);
-            LectorArchivo = new BinaryReader(FlujoArchivoEnviar);
+            LeyendoArchivo = new BinaryReader(FlujoArchivoEnviar);
 
-            archivoEnviar.Nombre = nombre;
-            archivoEnviar.Tamaño = FlujoArchivoEnviar.Length;
-            archivoEnviar.Avance = 0;
-            archivoEnviar.Num = 1;
+            arhivoEnviar.Nombre = nombre;
+            arhivoEnviar.Tamaño = FlujoArchivoEnviar.Length;
+            arhivoEnviar.Avance = 0;
+            arhivoEnviar.Num = 1;
 
             int indiceUltimaBarra = nombre.LastIndexOf('\\');
             string nombreArchivo = nombre.Substring(indiceUltimaBarra + 1);
 
             string metadatos = nombreArchivo + "-" + FlujoArchivoEnviar.Length;
             MessageBox.Show(metadatos);
-            inicializaEnvio(metadatos, "D");
+            Enviar(metadatos, "D");
             procesoEnvioArchivo = new Thread(EnviandoArchivo);
             procesoEnvioArchivo.Start();
 
@@ -236,31 +252,31 @@ namespace ChatApp
             //ENVIAR LAS TRAMAS DE INFORMACION
             TramCabaceraEnvioArchivo = ASCIIEncoding.UTF8.GetBytes("AI001");
 
-            while (archivoEnviar.Avance <= archivoEnviar.Tamaño - 1019)
+            while (arhivoEnviar.Avance <= arhivoEnviar.Tamaño - 1019)
             {
-                LectorArchivo.Read(TramaEnvioArchivo, 0, 1019);
-                archivoEnviar.Avance = archivoEnviar.Avance + 1019;
+                LeyendoArchivo.Read(TramaEnvioArchivo, 0, 1019);
+                arhivoEnviar.Avance = arhivoEnviar.Avance + 1019;
                 //envio de una trama llena de 1019 bytes del archivo
                 while (BufferSalidaVacio == false)
                 {//esperamos
                 }
-                //MessageBox.Show("avance = " + archivoEnviar.Avance.ToString());
+                //MessageBox.Show("avance = " + arhivoEnviar.Avance.ToString());
                 puerto.Write(TramCabaceraEnvioArchivo, 0, 5);
                 puerto.Write(TramaEnvioArchivo, 0, 1019);
                 // puerto.Write(tramaRelleno, 0, 1019 - TramaEnvio.Length);
             }
-            int tamanito = Convert.ToInt16(archivoEnviar.Tamaño - archivoEnviar.Avance);
-            LectorArchivo.Read(TramaEnvioArchivo, 0, tamanito);
+            int tamanito = Convert.ToInt16(arhivoEnviar.Tamaño - arhivoEnviar.Avance);
+            LeyendoArchivo.Read(TramaEnvioArchivo, 0, tamanito);
             //envio de la ultima trama + relleno
             while (BufferSalidaVacio == false)
             {//esperamos
             }
-            MessageBox.Show("avance = " + archivoEnviar.Avance.ToString() + " t= " + tamanito.ToString());
+            MessageBox.Show("avance = " + arhivoEnviar.Avance.ToString() + " t= " + tamanito.ToString());
             puerto.Write(TramCabaceraEnvioArchivo, 0, 5);
             puerto.Write(TramaEnvioArchivo, 0, tamanito);
             puerto.Write(tramaRelleno, 0, 1019 - tamanito);
 
-            LectorArchivo.Close();
+            LeyendoArchivo.Close();
             FlujoArchivoEnviar.Close();
         }
 
@@ -272,28 +288,28 @@ namespace ChatApp
             string nombre = partes[0];
             string bytes = partes[1];
             FlujoArchivoRecibir = new FileStream(rutaDescarga + nombre, FileMode.Create, FileAccess.Write);
-            EscritorArchivo = new BinaryWriter(FlujoArchivoRecibir);
-            archivoRecibir.Nombre = nombre;
-            archivoRecibir.Num = 1;
-            archivoRecibir.Tamaño = long.Parse(bytes);
-            archivoRecibir.Avance = 0;
+            EscribiendoArchivo = new BinaryWriter(FlujoArchivoRecibir);
+            arhivoRecibir.Nombre = nombre;
+            arhivoRecibir.Num = 1;
+            arhivoRecibir.Tamaño = long.Parse(bytes);
+            arhivoRecibir.Avance = 0;
         }
 
         private void ConstruirArchivo()
         {
             // debe realizarse en funcion del tamaño 1019 y la ultima será tamanito
 
-            if (archivoRecibir.Avance <= archivoRecibir.Tamaño - 1019)
+            if (arhivoRecibir.Avance <= arhivoRecibir.Tamaño - 1019)
             {
-                EscritorArchivo.Write(TramaRecibida, 5, 1019);
-                archivoRecibir.Avance = archivoRecibir.Avance + 1019;
+                EscribiendoArchivo.Write(TramaRecibida, 5, 1019);
+                arhivoRecibir.Avance = arhivoRecibir.Avance + 1019;
             }
 
             else
             {
-                int tamanito = Convert.ToInt16(archivoRecibir.Tamaño - archivoRecibir.Avance);
-                EscritorArchivo.Write(TramaRecibida, 5, tamanito);
-                EscritorArchivo.Close();
+                int tamanito = Convert.ToInt16(arhivoRecibir.Tamaño - arhivoRecibir.Avance);
+                EscribiendoArchivo.Write(TramaRecibida, 5, tamanito);
+                EscribiendoArchivo.Close();
                 FlujoArchivoRecibir.Close();
             }
 

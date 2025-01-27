@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ChatApp
 {
-    internal class FileSent
+    class FileSent
     {
         public int Num { get; set; }
         public string Nombre { get; set; }
