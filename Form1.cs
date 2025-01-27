@@ -102,9 +102,26 @@ namespace ChatApp
         private void messageTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
             byte[] bytesToWrite = Encoding.UTF8.GetBytes(messageTextBox.Text);
-            if(bytesToWrite.Length >= 1019 && e.KeyChar != (char)Keys.Back)
+            if (bytesToWrite.Length >= 1019 && e.KeyChar != (char)Keys.Back)
             {
                 e.Handled = true;
+            }
+        }
+
+        private void btnEnviarArchivo_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Title = "Selecciona un archivo";
+            openFileDialog.Filter = "Todos los archivos (*.*)|*.*";
+            openFileDialog.Multiselect = false;
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                // Obtener la ruta del archivo seleccionado
+                string rutaArchivo = openFileDialog.FileName;
+
+                controlTxRx.IniciaEnvioArchivo(rutaArchivo);
+
+                //MessageBox.Show("Archivo seleccionado: " + rutaArchivo + "\nTamaño:" + bytesArchivo);
             }
         }
     }
